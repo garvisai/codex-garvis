@@ -6,8 +6,32 @@
 
 set -euo pipefail
 
-API_URL="http://localhost:12000/api/chat"
+DEFAULT_API_BASE="http://localhost:12000"
+read -rp "Enter AI API base URL [${DEFAULT_API_BASE}]: " API_BASE
+API_BASE="${API_BASE:-$DEFAULT_API_BASE}"
+API_URL="${API_BASE%/}/api/chat"
 CHAT_ID="$(uuidgen)"
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+check_api() {
+  local health
+  health=$(curl -fs "$API_BASE/health" 2>/dev/null || true)
+  if [[ -n "$health" ]]; then
+    local models
+    models=$(echo "$health" | jq -r '.supportedModels[]?' 2>/dev/null | xargs)
+    if [[ -n "$models" ]]; then
+      log "AI API healthy. Supported models: $models"
+    else
+      log "AI API responded, but models list unavailable"
+    fi
+  else
+    log "Warning: could not contact AI API at $API_BASE"
+  fi
+}
+
+# Check connectivity to the chosen AI API
+check_api
 
 # -----------------------------------------------------------------------------
 # Helper: send a message to the AI endpoint and print the response
@@ -18,8 +42,6 @@ ask_ai() {
   payload=$(jq -n --arg msg "$msg" --arg chat "$CHAT_ID" '{messages:[{role:"user",content:$msg}],modelId:"meta-llama/Llama-3.3-70B-Instruct-Turbo",userSystemPrompt:"You are a helpful assistant",webSearchModePrompt:false,imageGenerationMode:false,chatId:$chat}')
   curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "$payload" | jq -r '.choices[0].message.content // ""'
 }
-
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
 # -----------------------------------------------------------------------------
 # Gather user input
