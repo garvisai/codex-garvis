@@ -313,6 +313,9 @@ pnpm build
 # Linux-only: download prebuilt sandboxing binaries (requires gh and zstd).
 ./scripts/install_native_deps.sh
 
+# Optional: AI-assisted backup utility
+./scripts/interactive_backup.sh
+
 # Get the usage and the options
 node ./dist/cli.js --help
 
